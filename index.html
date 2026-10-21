@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ANWB Energie</title>
+<meta name="description" content="Demo replica of the ANWB Energie app, instrumented with Amplitude.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Signika:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ===== Amplitude: Unified Script (Analytics + Session Replay + Web Experiment) + Guides & Surveys ===== -->
+<script src="https://cdn.amplitude.com/script/0032eb7c08477da824778a513a7c3601.js"></script>
+<script src="https://cdn.amplitude.com/script/0032eb7c08477da824778a513a7c3601.engagement.js"></script>
+<!-- Feature Experiment client (for the two feature flags used in the app) -->
+<script src="https://unpkg.com/@amplitude/experiment-js-client@1.15.5/dist/experiment.umd.js"></script>
+<script>
+  // Safety net: if the Amplitude CDN is blocked (corporate proxy, ad blocker) the demo still works, it just does not track.
+  if (!window.amplitude) { console.warn('Amplitude script not loaded'); window.amplitude = { add(){}, init(){}, track(){}, identify(){}, setUserId(){}, setDeviceId(){}, getDeviceId(){ return null; }, reset(){}, Identify: class { set(){ return this; } setOnce(){ return this; } } }; }
+  if (!window.sessionReplay) window.sessionReplay = { plugin(){ return {}; } };
+  if (!window.engagement) window.engagement = { plugin(){ return {}; } };
+</script>
+<script>
+  // ---- Demo configuration -------------------------------------------------
+  window.ANWB_CONFIG = {
+    amplitudeApiKey: "0032eb7c08477da824778a513a7c3601",      // ANWB Energie app, project 886391 (org 46900)
+    experimentDeploymentKey: "[client-deployment-key]",        // Experiment > Deployments (same project). Leave as-is to use local fallback variants.
+    flags: { smartCharging: "smart-charging-tariff-nudge", advancePayment: "advance-payment-inline-edit" },
+    agentId: "iris-energy-assistant"
+  };
+  window.amplitude.add(window.engagement.plugin());
+  window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 }));
+  window.amplitude.init(window.ANWB_CONFIG.amplitudeApiKey, {
+    fetchRemoteConfig: true,
+    autocapture: { pageViews: true, sessions: true, formInteractions: true, fileDownloads: false, elementInteractions: true },
+    appVersion: "4.12.0-demo"
+  });
+</script>
+
+<style>
+  :root{
+    --yellow:#FFCC00; --yellow-deep:#F2B800; --navy:#00387A; --navy-deep:#002B5C;
+    --ink:#1B2430; --ink-soft:#56606E; --line:#E3E7ED; --paper:#FFFFFF; --sand:#F5F3EC;
+    --green:#1E8E5A; --red:#C8321E; --sky:#E8F1FB;
+    --radius:14px; --font:"Signika",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{font-family:var(--font);background:#D9DDE3;color:var(--ink);-webkit-font-smoothing:antialiased}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  .stage{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 12px}
+  .phone{width:min(400px,100%);height:min(840px,calc(100vh - 48px));background:var(--sand);border-radius:38px;box-shadow:0 30px 60px rgba(0,30,70,.28),0 0 0 10px #10141a;overflow:hidden;position:relative;display:flex;flex-direction:column}
+  @media (max-width:480px){body{background:var(--sand)}.stage{padding:0}.phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}}
+  .topbar{background:var(--yellow);padding:calc(14px + env(safe-area-inset-top,0px)) 18px 12px;display:flex;align-items:center;justify-content:space-between}
+  .wordmark{font-weight:700;letter-spacing:.04em;color:var(--navy);font-size:19px}
+  .wordmark small{display:block;font-weight:500;letter-spacing:0;font-size:12px;color:var(--navy-deep);opacity:.8}
+  .iconbtn{background:none;border:0;font-family:inherit;color:var(--navy);font-size:13px;font-weight:600;padding:8px 10px;border-radius:10px;cursor:pointer}
+  .iconbtn:hover,.iconbtn:focus-visible{background:rgba(0,56,122,.1);outline:none}
+  .screen{flex:1;overflow-y:auto;padding:16px 16px 92px;display:none}
+  .screen.active{display:block}
+  h1{font-size:24px;line-height:1.15;margin:4px 0 14px;color:var(--navy)} h2{font-size:16px;margin:18px 0 8px;color:var(--ink)}
+  p{line-height:1.45;margin:0 0 10px}
+  .card{background:var(--paper);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+  .card.navy{background:var(--navy);color:#fff;border:0}
+  .card.yellow{background:var(--yellow);border:0;color:var(--navy-deep)}
+  .big{font-size:38px;font-weight:700;line-height:1;letter-spacing:-.01em}
+  .big small{font-size:14px;font-weight:500;letter-spacing:0;margin-left:4px}
+  .muted{color:var(--ink-soft);font-size:13px}
+  .card.navy .muted{color:#C9D6E8}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:600;font-size:15px;padding:12px 16px;border-radius:12px;border:0;cursor:pointer;background:var(--navy);color:#fff;width:100%}
+  .btn.secondary{background:var(--paper);color:var(--navy);border:2px solid var(--navy)}
+  .btn.yellow{background:var(--yellow);color:var(--navy-deep)}
+  .btn.small{width:auto;padding:8px 12px;font-size:13px}
+  .btn:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  input,select{font:inherit;width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--navy);border-color:var(--navy)}
+  label{display:block;font-size:13px;color:var(--ink-soft);margin:10px 0 4px}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:110px;margin:10px 0 4px}
+  .bars div{flex:1;background:var(--navy);border-radius:3px 3px 0 0;min-height:4px;opacity:.85}
+  .bars div.low{background:var(--green)} .bars div.high{background:var(--red)} .bars div.now{background:var(--yellow-deep);opacity:1}
+  .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft)}
+  .tabs{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);display:flex;padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px))}
+  .tabs button{flex:1;background:none;border:0;font:inherit;font-size:11px;font-weight:600;color:var(--ink-soft);padding:6px 2px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tabs button span.ico{font-size:20px;line-height:1}
+  .tabs button.active{color:var(--navy)}
+  .tabs button:focus-visible{outline:2px solid var(--navy)}
+  .pill{display:inline-block;background:var(--sky);color:var(--navy);font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
+  .pill.green{background:#E3F4EA;color:var(--green)} .pill.red{background:#FBE7E3;color:var(--red)}
+  .list{list-style:none;margin:0;padding:0} .list li{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px} .list li:last-child{border:0}
+  .toast{position:absolute;left:16px;right:16px;bottom:96px;background:var(--ink);color:#fff;padding:12px 14px;border-radius:12px;font-size:14px;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;z-index:30}
+  .toast.show{opacity:1;transform:none} .toast.error{background:var(--red)}
+  .error{background:#FBE7E3;color:var(--red);border-radius:10px;padding:10px 12px;font-size:13px;margin:8px 0}
+  .fab{position:absolute;right:16px;bottom:84px;width:54px;height:54px;border-radius:50%;background:var(--yellow);border:0;font:inherit;font-weight:700;color:var(--navy);box-shadow:0 8px 18px rgba(0,0,0,.25);cursor:pointer;z-index:20;font-size:13px}
+  .fab:focus-visible{outline:3px solid var(--navy)}
+  /* Iris chat */
+  .iris{position:absolute;inset:0;background:var(--sand);z-index:40;display:none;flex-direction:column}
+  .iris.open{display:flex}
+  .iris header{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 12px;display:flex;align-items:center;justify-content:space-between}
+  .iris header b{font-size:16px} .iris header small{display:block;font-weight:400;opacity:.8;font-size:12px}
+  .msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:84%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.4;white-space:pre-line}
+  .msg.user{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:4px}
+  .msg.ai{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg.tool{align-self:flex-start;font-size:12px;color:var(--ink-soft);background:transparent;padding:2px 6px}
+  .msg .acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .chip{font:inherit;font-size:12px;font-weight:600;background:var(--sky);color:var(--navy);border:0;border-radius:999px;padding:6px 10px;cursor:pointer}
+  .rate{display:flex;gap:6px;margin-top:6px} .rate button{font:inherit;background:none;border:1px solid var(--line);border-radius:8px;padding:3px 8px;cursor:pointer;font-size:13px}
+  .composer{display:flex;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
+  .composer input{flex:1}
+  .suggest{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 0;background:#fff}
+  /* demo panel */
+  .panel{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end}
+  .panel.open{display:flex}
+  .panel .sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:85%;overflow:auto}
+  .toggle{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .toggle input{width:auto}
+  .banner{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,#FFF3B8,#FFE066);border-radius:var(--radius);padding:14px;margin-bottom:12px;cursor:pointer;border:0;width:100%;text-align:left;font:inherit;color:var(--navy-deep)}
+  .banner b{display:block;font-size:15px} .banner span{font-size:13px}
+  .steps{display:flex;gap:6px;margin:6px 0 14px} .steps i{flex:1;height:5px;border-radius:3px;background:var(--line)} .steps i.on{background:var(--navy)}
+  .choice{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  .choice button{font:inherit;padding:12px;border-radius:12px;border:2px solid var(--line);background:#fff;cursor:pointer;text-align:left;font-size:14px}
+  .choice button.on{border-color:var(--navy);background:var(--sky)}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="stage"><div class="phone" id="phone">
+
+  <div class="topbar">
+    <div class="wordmark">ANWB <small>Energie</small></div>
+    <div><button class="iconbtn" data-nav="contract">Contract</button><button class="iconbtn" id="demoBtn" aria-label="Demo settings">⚙</button></div>
+  </div>
+
+  <!-- ================= LOGIN ================= -->
+  <section class="screen" id="s-login">
+    <h1>Welcome back</h1>
+    <p class="muted">Sign in with your ANWB account. Your relationship number links energy, EV charging, roadside assistance and insurance in one view.</p>
+    <div class="card">
+      <label for="rel">Relationship number</label><input id="rel" value="R200042" autocomplete="off">
+      <label for="pw">Password</label><input id="pw" type="password" value="demo-demo" autocomplete="off">
+      <div style="height:12px"></div>
+      <button class="btn" id="loginBtn">Sign in</button>
+      <div style="height:8px"></div>
+      <button class="btn secondary" id="bioBtn">Use fingerprint</button>
+    </div>
+    <p class="muted" style="text-align:center">Opened from the anwb.nl QR code? Your web session is linked automatically.</p>
+  </section>
+
+  <!-- ================= HOME ================= -->
+  <section class="screen" id="s-home">
+    <h1>Good evening, <span id="firstName">Sanne</span></h1>
+    <div class="card navy">
+      <div class="muted">Electricity price right now</div>
+      <div class="big"><span id="priceNow">0,23</span><small>€ / kWh</small></div>
+      <div class="row" style="margin-top:8px"><span class="pill" id="priceLevel">average</span><span class="muted">incl. purchasing cost and taxes</span></div>
+    </div>
+    <div class="row" style="gap:12px">
+      <div class="card" style="flex:1;margin:0"><div class="muted">Today so far</div><div class="big" style="font-size:26px">€ 4,12</div><div class="muted">11,8 kWh · 0,9 m³ gas</div></div>
+      <div class="card" style="flex:1;margin:0"><div class="muted">Cheapest hour</div><div class="big" style="font-size:26px">13:00</div><div class="muted">€ 0,09 / kWh tomorrow</div></div>
+    </div>
+    <div style="height:12px"></div>
+    <button class="banner" id="crossBanner" data-product="ev_charging">
+      <div><b id="crossTitle">Charge your EV at home for € 0,19</b><span id="crossSub">Members with an ANWB charging card save on average € 21 a month.</span></div>
+    </button>
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Hourly prices today</h2><button class="btn small secondary" data-nav="prices">All prices</button></div>
+      <div class="bars" id="miniBars"></div><div class="axis"><span>0:00</span><span>12:00</span><span>23:00</span></div>
+    </div>
+    <div class="card" id="smartChargeCard" hidden>
+      <b>Smart charging</b>
+      <p class="muted" id="smartChargeCopy">Let the app start your charger in the cheapest hours of your dynamic contract.</p>
+      <button class="btn yellow" id="smartChargeBtn">Enable smart charging</button>
+    </div>
+  </section>
+
+  <!-- ================= PRICES ================= -->
+  <section class="screen" id="s-prices">
+    <h1>Hourly prices</h1>
+    <div class="choice"><button class="on" data-day="today">Today</button><button data-day="tomorrow">Tomorrow</button></div>
+    <div class="card"><div class="bars" id="dayBars"></div><div class="axis"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div></div>
+    <div class="card">
+      <b>Price alert</b><p class="muted">Get a notification when the price drops below your threshold.</p>
+      <label for="thr">Threshold (€ / kWh)</label><input id="thr" type="number" step="0.01" value="0.10">
+      <div style="height:10px"></div><button class="btn" id="alertBtn">Set price alert</button>
+    </div>
+  </section>
+
+  <!-- ================= USAGE ================= -->
+  <section class="screen" id="s-usage">
+    <h1>Consumption</h1>
+    <div class="choice" id="periodChoice"><button class="on" data-period="day">Day</button><button data-period="month">Month</button><button data-period="year">Year</button></div>
+    <div class="choice"><button class="on" data-type="electricity">Electricity</button><button data-type="gas">Gas</button></div>
+    <div class="card"><div class="muted" id="usageLabel">Electricity per hour, Tuesday</div><div class="bars" id="usageBars"></div><div class="axis"><span id="ax0">0:00</span><span id="ax1">12:00</span><span id="ax2">23:00</span></div></div>
+    <div class="card"><ul class="list"><li><span>Total this month</span><b>312 kWh · € 71,40</b></li><li><span>Versus last month</span><b style="color:var(--red)">+18%</b></li><li><span>Solar returned</span><b>44 kWh</b></li></ul></div>
+  </section>
+
+  <!-- ================= CHARGING ================= -->
+  <section class="screen" id="s-charging">
+    <h1>EV charging</h1>
+    <div class="card yellow"><b>Last month</b><div class="big" style="font-size:28px">212 kWh</div><div>140 kWh at home · 72 kWh public</div></div>
+    <div class="card"><b>Home vs public tariff</b>
+      <ul class="list"><li><span>Home (your dynamic contract)</span><b>€ 0,19 / kWh</b></li><li><span>Public charger (average)</span><b>€ 0,49 / kWh</b></li><li><span>Move public sessions home</span><b style="color:var(--green)">save € 21 / month</b></li></ul>
+      <button class="btn secondary" id="compareBtn">Compare my tariffs</button>
+    </div>
+    <div class="card"><b>Recent sessions</b><ul class="list" id="sessions"></ul></div>
+    <div class="card" id="laadpasCard"><b>No ANWB charging card yet?</b><p class="muted">One card for 500,000 chargers in Europe, billed with your energy.</p><button class="btn" data-quote="ev_charging">Request charging card</button></div>
+  </section>
+
+  <!-- ================= SMART HOME ================= -->
+  <section class="screen" id="s-smart">
+    <h1>Smart home</h1>
+    <p class="muted">Combine solar panels, a home battery and an EV charger to use more of your own energy.</p>
+    <div class="card" id="bundleIntro">
+      <b>Your estimated self-consumption</b><div class="big" style="font-size:28px">31%</div><p class="muted">With a bundle this can rise to 74%.</p>
+      <button class="btn yellow" id="bundleStart">Build my bundle</button>
+    </div>
+    <div class="card" id="bundleFlow" hidden>
+      <div class="steps"><i class="on"></i><i></i><i></i><i></i></div>
+      <div id="bundleStep"></div>
+    </div>
+    <div class="card"><b>Why a bundle pays off</b><ul class="list"><li><span>Solar + EV</span><b>charge on sunshine</b></li><li><span>Battery</span><b>buy at € 0,09, use at € 0,32</b></li><li><span>Member discount</span><b>applies to all three</b></li></ul></div>
+  </section>
+
+  <!-- ================= CONTRACT ================= -->
+  <section class="screen" id="s-contract">
+    <h1>Your contract</h1>
+    <div class="card"><ul class="list"><li><span>Contract type</span><b>Dynamic</b></li><li><span>Start date</span><b>14 March 2026</b></li><li><span>Smart meter</span><b>Linked</b></li><li><span>Monthly advance payment</span><b>€ <span id="advNow">150</span></b></li></ul></div>
+    <div class="card">
+      <b>Change advance payment</b>
+      <p class="muted">Based on your usage we recommend € 142 per month.</p>
+      <div id="advEditor"></div>
+    </div>
+    <div class="card"><b>Annual statement</b><p class="muted">Your 2025 statement is ready.</p><button class="btn secondary" id="stmtBtn">Open statement</button></div>
+  </section>
+
+  <!-- ================= PRODUCT / QUOTE ================= -->
+  <section class="screen" id="s-quote">
+    <h1 id="qTitle">ANWB charging card</h1>
+    <div class="card" id="qIntro"></div>
+    <div class="card" id="qForm" hidden>
+      <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+      <b>Your details</b>
+      <div id="qPrefill"></div>
+      <label for="qName">Name</label><input id="qName">
+      <label for="qAddr">Address</label><input id="qAddr">
+      <label for="qIban">IBAN</label><input id="qIban" placeholder="NL00 ANWB 0000 0000 00">
+      <div style="height:12px"></div><button class="btn" id="qSubmit">Request quote</button>
+    </div>
+    <div class="card" id="qDone" hidden><b>Thanks, we have your request.</b><p class="muted">You will hear from us within two working days. The quote also appears in Mijn ANWB.</p><button class="btn secondary" data-nav="home">Back to home</button></div>
+  </section>
+
+  <!-- ================= TABS ================= -->
+  <nav class="tabs" id="tabs">
+    <button data-nav="home" class="active"><span class="ico">⌂</span>Home</button>
+    <button data-nav="prices"><span class="ico">€</span>Prices</button>
+    <button data-nav="usage"><span class="ico">▥</span>Usage</button>
+    <button data-nav="charging"><span class="ico">⚡</span>Charging</button>
+    <button data-nav="smart"><span class="ico">☀</span>Smart home</button>
+  </nav>
+  <button class="fab" id="irisFab" aria-label="Ask Iris">Iris</button>
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- ================= IRIS ================= -->
+  <div class="iris" id="iris" role="dialog" aria-label="Iris assistant">
+    <header><div><b>Iris</b><small>Your ANWB energy assistant</small></div><button class="iconbtn" id="irisClose" style="color:#fff">Close</button></header>
+    <div class="msgs" id="msgs"></div>
+    <div class="suggest" id="suggest"></div>
+    <div class="composer"><input id="irisInput" placeholder="Ask about prices, your bill, charging..." autocomplete="off"><button class="btn small" id="irisSend">Send</button></div>
+  </div>
+
+  <!-- ================= DEMO PANEL ================= -->
+  <div class="panel" id="panel"><div class="sheet">
+    <div class="row"><b>Demo controls</b><button class="iconbtn" id="panelClose">Done</button></div>
+    <p class="muted">These toggles change user properties sent to Amplitude so you can tell the one-ANWB story in a live session.</p>
+    <div class="toggle"><span>Relationship number linked across BUs</span><input type="checkbox" id="tLinked" checked></div>
+    <div class="toggle"><span>Member has an EV</span><input type="checkbox" id="tEv" checked></div>
+    <div class="toggle"><span>Member has solar</span><input type="checkbox" id="tSolar"></div>
+    <div class="toggle"><span>Products held</span><select id="tProducts" style="width:auto"><option value="energy">energy</option><option value="energy,ev_charging" selected>energy + ev_charging</option><option value="energy,roadside_assistance,car_insurance">energy + roadside + insurance</option></select></div>
+    <div class="toggle"><span>Advance payment variant</span><select id="tAdv" style="width:auto"><option>control</option><option>treatment</option></select></div>
+    <div class="toggle"><span>Smart charging variant</span><select id="tSmart" style="width:auto"><option>control</option><option>treatment</option></select></div>
+    <div style="height:12px"></div><button class="btn secondary" id="resetBtn">Sign out and reset user</button>
+  </div></div>
+</div></div>
+
+<script>
+(function(){
+  const C = window.ANWB_CONFIG, amp = window.amplitude;
+  const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
+  const track = (e, p) => amp.track(e, p || {});
+  const toast = (m, err) => { const t=$('#toast'); t.textContent=m; t.className='toast show'+(err?' error':''); setTimeout(()=>t.className='toast',2600); };
+
+  // ---------------- user state ----------------
+  const state = {
+    user: null, linked: true, hasEv: true, hasSolar: false, products: ['energy','ev_charging'],
+    variants: { advancePayment: 'control', smartCharging: 'control' }, exposed: {}
+  };
+  // Cross-platform handoff: the anwb.nl QR / OneLink carries the web device id (Android Install Referrer).
+  const q = new URLSearchParams(location.search);
+  const webDeviceId = q.get('amp_device_id') || q.get('web_device_id');
+  if (webDeviceId) { amp.setDeviceId(webDeviceId); }
+
+  function identifyUser(){
+    const id = new amp.Identify();
+    id.set('relationship_number', state.user).set('membership_tier','Plus').set('products_held', state.products)
+      .set('product_count', state.products.length).set('multi_product_member', state.products.length >= 2)
+      .set('has_ev', state.hasEv).set('has_solar', state.hasSolar).set('has_smart_meter', true)
+      .set('contract_type','dynamic').set('relationship_number_linked', state.linked)
+      .set('acquisition_source', webDeviceId ? 'brand_website_qr' : 'play_store_organic').set('iris_user', true);
+    amp.identify(id);
+  }
+
+  // ---------------- experiments (Feature Experiment) ----------------
+  let expClient = null;
+  if (window.Experiment && C.experimentDeploymentKey && !C.experimentDeploymentKey.startsWith('[')) {
+    try { expClient = window.Experiment.Experiment.initializeWithAmplitudeAnalytics(C.experimentDeploymentKey); expClient.start(); } catch(e){ console.warn('Experiment init failed', e); }
+  }
+  function variant(flagName){
+    const key = C.flags[flagName];
+    if (expClient) { const v = expClient.variant(key); if (v && v.value) return v.value; }   // SDK tracks $exposure automatically
+    const v = state.variants[flagName];                                                     // local fallback: track exposure ourselves
+    if (!state.exposed[key]) { state.exposed[key] = true; track('$exposure', { flag_key: key, variant: v }); }
+    return v;
+  }
+
+  // ---------------- navigation ----------------
+  const screens = { login:'#s-login', home:'#s-home', prices:'#s-prices', usage:'#s-usage', charging:'#s-charging', smart:'#s-smart', contract:'#s-contract', quote:'#s-quote' };
+  const viewEvent = { home:'Home Viewed', prices:'Hourly Prices Viewed', usage:'Consumption Graph Viewed', charging:'EV Charging Tab Viewed', smart:'Smart Home Viewed', contract:'Contract Viewed' };
+  function nav(name, props){
+    $$('.screen').forEach(s=>s.classList.remove('active')); $(screens[name]).classList.add('active');
+    $$('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.nav===name));
+    $('#tabs').style.display = name==='login' ? 'none' : 'flex'; $('#irisFab').style.display = name==='login' ? 'none' : 'block';
+    $(screens[name]).scrollTop = 0;
+    if (viewEvent[name]) track(viewEvent[name], Object.assign({ screen: name }, props||{}));
+    if (name==='home') renderHome(); if (name==='prices') renderDay('today'); if (name==='usage') renderUsage();
+    if (name==='charging') { track('Charging Session Viewed', { location_type:'home', kwh: 31.4, cost_eur: 5.97 }); variant('smartCharging'); }
+    if (name==='contract') renderAdvance();
+    if (name==='smart') $('#bundleFlow').hidden = true, $('#bundleIntro').hidden = false;
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-nav]'); if (b) nav(b.dataset.nav); });
+
+  // ---------------- login ----------------
+  function login(method){
+    state.user = $('#rel').value.trim() || 'R200042'; amp.setUserId(state.user); identifyUser();
+    track('Login Completed', { login_method: method, acquisition_source: webDeviceId ? 'brand_website_qr' : 'play_store_organic' });
+    if (webDeviceId) track('Install Attributed', { source:'anwb.nl', medium:'qr_code', campaign:'energy-app-download', web_device_id: webDeviceId });
+    toast('Signed in as ' + state.user); nav('home');
+  }
+  $('#loginBtn').onclick = () => login('anwb_account'); $('#bioBtn').onclick = () => login('biometric');
+
+  // ---------------- home ----------------
+  const prices = Array.from({length:24},(_,h)=> +(0.07 + 0.3*Math.pow(Math.sin((h-3)/24*Math.PI),2) * (h>16&&h<21?1.25:1)).toFixed(3));
+  const prices2 = prices.map((p,h)=> +(p*0.9 + (h===13?-0.05:0)).toFixed(3));
+  function bars(el, arr, nowH){ el.innerHTML=''; const max=Math.max(...arr); arr.forEach((p,h)=>{ const d=document.createElement('div'); d.style.height=(p/max*100)+'%'; d.className = h===nowH?'now': p<0.12?'low': p>0.3?'high':''; d.title=h+':00 € '+p.toFixed(2); el.appendChild(d);}); }
+  function renderHome(){
+    const h = new Date().getHours(); bars($('#miniBars'), prices, h);
+    $('#priceNow').textContent = prices[h].toFixed(2).replace('.',','); const lvl = prices[h]<0.12?'low':prices[h]>0.3?'high':'average';
+    $('#priceLevel').textContent = lvl; $('#priceLevel').className='pill '+(lvl==='low'?'green':lvl==='high'?'red':'');
+    // cross-sell banner: offer the product the member does not have yet
+    const offers = { ev_charging:['Charge your EV at home for € 0,19','Members with an ANWB charging card save on average € 21 a month.'], solar:['Solar panels with member discount','Cover 61% of your usage. Your roof fits 10 panels.'], roadside_assistance:['Wegenwacht for € 7,50 a month','Energy members get the first 3 months free.'], car_insurance:['Car insurance with 10% member discount','Combine insurance and energy in one monthly bill.'] };
+    const product = ['ev_charging','solar','roadside_assistance','car_insurance'].find(p=>!state.products.includes(p)) || 'solar';
+    $('#crossBanner').dataset.product = product; $('#crossTitle').textContent = offers[product][0]; $('#crossSub').textContent = offers[product][1];
+    track('Cross-sell Banner Viewed', { product, placement:'home_card', creative: product+'_member_offer' });
+    // smart charging card follows the feature experiment
+    const show = state.hasEv; $('#smartChargeCard').hidden = !show;
+    if (show) { const v = variant('smartCharging'); $('#smartChargeCopy').textContent = v==='treatment' ? 'Yesterday you could have saved € 1,80 by charging between 13:00 and 15:00. Let the app do it for you.' : 'Let the app start your charger in the cheapest hours of your dynamic contract.'; }
+  }
+  $('#crossBanner').onclick = () => { const product = $('#crossBanner').dataset.product; track('Cross-sell Banner Clicked', { product, placement:'home_card' }); openQuote(product, 'cross_sell'); };
+  $('#smartChargeBtn').onclick = () => { track('Smart Charging Enabled', { strategy:'cheapest_hours', variant: state.variants.smartCharging }); toast('Smart charging enabled'); $('#smartChargeBtn').disabled = true; };
+
+  // ---------------- prices ----------------
+  function renderDay(day){ bars($('#dayBars'), day==='today'?prices:prices2, day==='today'?new Date().getHours():-1); }
+  $$('[data-day]').forEach(b=> b.onclick = () => { $$('[data-day]').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderDay(b.dataset.day); track('Hourly Prices Viewed', { day: b.dataset.day, price_level: 'average' }); });
+  $('#alertBtn').onclick = () => { track('Price Alert Set', { threshold_eur_kwh: parseFloat($('#thr').value), alert_type:'low_price' }); toast('Price alert set'); };
+
+  // ---------------- usage ----------------
+  let period='day', etype='electricity';
+  function renderUsage(){ const n = period==='day'?24:period==='month'?30:12; const arr = Array.from({length:n},(_,i)=> 0.3+Math.random()*(etype==='gas'?0.6:1)); bars($('#usageBars'), arr, -1);
+    $('#usageLabel').textContent = (etype==='gas'?'Gas':'Electricity')+' per '+(period==='day'?'hour, today':period==='month'?'day, October':'month, 2026');
+    [$('#ax0'),$('#ax1'),$('#ax2')].forEach((a,i)=> a.textContent = period==='day'?['0:00','12:00','23:00'][i]:period==='month'?['1','15','30'][i]:['Jan','Jun','Dec'][i]); }
+  $$('[data-period]').forEach(b=> b.onclick = () => { $$('[data-period]').forEach(x=>x.classList.remove('on')); b.classList.add('on'); period=b.dataset.period; renderUsage(); track('Consumption Graph Viewed', { period, energy_type: etype }); });
+  $$('[data-type]').forEach(b=> b.onclick = () => { $$('[data-type]').forEach(x=>x.classList.remove('on')); b.classList.add('on'); etype=b.dataset.type; renderUsage(); track('Consumption Graph Viewed', { period, energy_type: etype }); });
+
+  // ---------------- charging ----------------
+  [['Mon 20 Oct','Home','31,4 kWh','€ 5,97'],['Sat 18 Oct','Public · Fastned A2','24,0 kWh','€ 14,16'],['Thu 16 Oct','Home','18,2 kWh','€ 2,91']].forEach(r=>{ const li=document.createElement('li'); li.innerHTML=`<span>${r[0]} · ${r[1]}</span><b>${r[2]} · ${r[3]}</b>`; $('#sessions').appendChild(li); });
+  $('#compareBtn').onclick = () => { track('Home Charging Tariff Compared', { home_eur_kwh:0.19, public_eur_kwh:0.49, monthly_saving_eur:21 }); toast('Charging at home saves you € 21 a month'); };
+  document.addEventListener('click', e => { const b = e.target.closest('[data-quote]'); if (b) openQuote(b.dataset.quote, 'product_page'); });
+
+  // ---------------- smart home bundle ----------------
+  const bundle = { steps:['solar','home_battery','ev_charger'], i:0, chosen:{} };
+  const stepUi = { solar:['Solar panels', ['8 panels','10 panels','14 panels']], home_battery:['Home battery', ['5 kWh','10 kWh','No battery']], ev_charger:['EV charger', ['11 kW wallbox','22 kW wallbox','No charger']] };
+  $('#bundleStart').onclick = () => { bundle.i=0; bundle.chosen={}; $('#bundleIntro').hidden=true; $('#bundleFlow').hidden=false; track('Bundle Configurator Started', { entry:'smart_home_tab' }); renderBundle(); };
+  function renderBundle(){
+    $$('#bundleFlow .steps i').forEach((el,k)=> el.classList.toggle('on', k<=bundle.i));
+    const box = $('#bundleStep');
+    if (bundle.i < 3) { const [title, opts] = stepUi[bundle.steps[bundle.i]]; box.innerHTML = `<b>${title}</b><div class="choice">${opts.map(o=>`<button data-opt="${o}">${o}</button>`).join('')}</div>`;
+      $$('#bundleStep [data-opt]').forEach(b=> b.onclick = () => { const step=bundle.steps[bundle.i]; bundle.chosen[step]=b.dataset.opt; track('Bundle Step Completed', { step, option:b.dataset.opt, selected: !b.dataset.opt.startsWith('No') }); bundle.i++; renderBundle(); }); }
+    else { const products = Object.entries(bundle.chosen).filter(([k,v])=>!v.startsWith('No')).map(([k])=>k); const saving = 35 + products.length*28;
+      track('Bundle Quote Viewed', { products, bundle_size: products.length, monthly_saving_eur: saving, payback_years: 6.5 });
+      box.innerHTML = `<b>Your bundle</b><ul class="list">${products.map(p=>`<li><span>${stepUi[p][0]}</span><b>${bundle.chosen[p]}</b></li>`).join('')}<li><span>Estimated saving</span><b style="color:var(--green)">€ ${saving} / month</b></li><li><span>Self-consumption</span><b>74%</b></li></ul><button class="btn yellow" id="bundleQuote">Request bundle quote</button>`;
+      $('#bundleQuote').onclick = () => openQuote('smart_home_bundle', 'bundle_configurator', products); }
+  }
+
+  // ---------------- contract: advance payment (friction + feature experiment) ----------------
+  let advAttempts = 0;
+  function renderAdvance(){
+    const v = variant('advancePayment'); advAttempts = 0;
+    $('#advEditor').innerHTML = v==='treatment'
+      ? `<label for="advIn">New monthly amount (€)</label><input id="advIn" type="number" value="142"><div style="height:10px"></div><button class="btn" id="advSave">Save amount</button>`
+      : `<button class="btn secondary" id="advEdit">Edit amount</button><div id="advLegacy"></div>`;
+    if (v==='treatment') { $('#advSave').onclick = () => { track('Advance Payment Edit Started', { current_amount_eur: 150, variant:v }); saveAdvance(+$('#advIn').value, false); }; }
+    else { $('#advEdit').onclick = () => { track('Advance Payment Edit Started', { current_amount_eur: 150, variant:v }); advAttempts++;
+        // Control reproduces the Play Store complaint: the field looks editable but is not, and the save times out.
+        $('#advLegacy').innerHTML = `<label for="advIn">New monthly amount (€)</label><input id="advIn" type="number" value="150" readonly style="background:#F3F4F6"><div style="height:10px"></div><button class="btn" id="advSave">Save</button>`;
+        $('#advIn').onfocus = () => { if (advAttempts===1) { track('Advance Payment Edit Failed', { error:'input_not_editable', attempt: advAttempts }); toast('This field cannot be edited right now', true); } else $('#advIn').removeAttribute('readonly'); };
+        $('#advSave').onclick = () => { if (advAttempts===1) { track('Advance Payment Edit Failed', { error:'save_timeout', attempt: advAttempts }); $('#advLegacy').insertAdjacentHTML('beforeend','<div class="error">Something went wrong while saving. Please try again.</div>'); advAttempts++; } else saveAdvance(+$('#advIn').value, true); }; }; }
+  }
+  function saveAdvance(amount, retry){ track('Advance Payment Updated', { new_amount_eur: amount, retry }); $('#advNow').textContent = amount; toast('Advance payment updated to € '+amount); }
+  $('#stmtBtn').onclick = () => track('Annual Statement Opened', { year: 2025 });
+
+  // ---------------- product detail + quote (cross-sell friction) ----------------
+  const productCopy = { ev_charging:['ANWB charging card','One card for 500,000 chargers across Europe. Charging sessions appear in this app, billed together with your energy.'], solar:['Solar panels','10 panels on your roof, installed within 6 weeks, with 10% member discount.'], home_battery:['Home battery','Store cheap energy at night and use it at peak price.'], roadside_assistance:['Wegenwacht roadside assistance','Help within 45 minutes, anywhere in the Netherlands.'], car_insurance:['Car insurance','10% member discount, claim-free years protected.'], smart_home_bundle:['Smart home bundle','Solar, battery and charger installed together, one monthly amount.'] };
+  let currentQuote = null;
+  function openQuote(product, entry, products){
+    currentQuote = { product, entry, products }; const [t, copy] = productCopy[product]; $('#qTitle').textContent = t;
+    $('#qIntro').innerHTML = `<p>${copy}</p><button class="btn yellow" id="qStart">Start request</button>`; $('#qForm').hidden = true; $('#qDone').hidden = true;
+    track('Product Detail Viewed', { product, entry }); nav('quote');
+    $('#qStart').onclick = () => { track('Quote Request Started', { product }); $('#qForm').hidden = false; $('#qStart').disabled = true;
+      // The one-ANWB friction: if the relationship number is not linked across business units, nothing prefills.
+      if (state.linked) { $('#qName').value='Sanne de Vries'; $('#qAddr').value='Keizersgracht 12, 1015 CN Amsterdam'; $('#qIban').value='NL12 ANWB 0123 4567 89'; $('#qPrefill').innerHTML='<span class="pill green">Prefilled from your ANWB member profile</span>'; }
+      else { $('#qName').value=''; $('#qAddr').value=''; $('#qIban').value=''; $('#qPrefill').innerHTML='<div class="error">We could not find your member details for this product. Please enter them again.</div>'; track('Member Details Prefill Failed', { product, reason:'relationship_number_not_linked', fields_to_reenter: 6 }); }
+      $('#qForm').scrollIntoView({behavior:'smooth'}); };
+    $('#qSubmit').onclick = () => { if (!$('#qName').value || !$('#qAddr').value) { toast('Please complete your details', true); return; }
+      track('Quote Request Submitted', { product, prefilled: state.linked, bundle_products: products || undefined, estimated_monthly_eur: product==='smart_home_bundle'?165:12 });
+      if (product==='ev_charging') track('Charging Card Requested', { card_type:'ANWB Laadpas', entry });
+      state.products = Array.from(new Set(state.products.concat(product==='smart_home_bundle'?['solar','home_battery']:[product]))); identifyUser();
+      $('#qForm').hidden = true; $('#qDone').hidden = false; };
+  }
+
+  // ---------------- Iris: in-app agent instrumented with Agent Analytics events ----------------
+  const iris = { session:null, turn:0, open:false };
+  const KB = [
+    { k:/charg|ev|car|wallbox|laadpas/i, tool:'get_charging_sessions', ok:true, a:'Last month you charged 212 kWh: 140 kWh at home at € 0,19 and 72 kWh public at € 0,49. Moving the public sessions home would save about € 21 a month. Shall I enable smart charging?', acts:[['Enable smart charging','Smart Charging Enabled','home']] },
+    { k:/advance|termijn|monthly amount|lower|payment/i, tool:'update_advance_payment', ok:false, a:'Based on your usage I recommend € 142 per month. I tried to update it but the contract service timed out. You can retry under Contract, or I can create a ticket for you.', acts:[['Open contract','Contract Viewed','contract']] },
+    { k:/cheap|price|tarif|hour|tomorrow/i, tool:'get_hourly_prices', ok:true, a:'Tomorrow the cheapest hour is 13:00 to 14:00 at € 0,09 per kWh and the most expensive is 18:00 at € 0,34. Want me to set a low-price alert?', acts:[['Set alert','Price Alert Set','prices']] },
+    { k:/solar|battery|bundle|panel|zonne/i, tool:'calculate_bundle_savings', ok:true, a:'With 10 panels and a 5 kWh battery you would cover 61% of your usage, 74% if you also charge your EV on solar. Estimated saving € 68 a month, payback 6,5 years. I can open the bundle configurator with your usage prefilled.', acts:[['Build my bundle','Bundle Configurator Started','smart']] },
+    { k:/bill|invoice|statement|grid|cost|higher/i, tool:'get_consumption', ok:true, a:'Your October usage was 18% higher than September, mostly on cold evenings between 18:00 and 22:00. The grid fee on your invoice is a fixed charge from your regional operator Liander, not ANWB.', acts:[['Show consumption','Consumption Graph Viewed','usage']] },
+    { k:/contract|end|switch|fixed|dynamic/i, tool:'get_contract', ok:true, a:'Your dynamic contract started on 14 March 2026 and has no end date. You can switch to a 1-year fixed contract at any time without a penalty.', acts:[['Open contract','Contract Viewed','contract']] },
+  ];
+  const agentBase = () => ({ '[Agent] Session ID': iris.session, '[Agent] Agent ID': C.agentId, '[Agent] Env':'production', '[Agent] Runtime':'browser', '[Agent] Context': JSON.stringify({ surface:'anwb-energie-app', app_version:'4.12.0-demo' }) });
+  function openIris(entry){ if (!iris.session) { iris.session = 'iris-' + crypto.randomUUID(); iris.turn = 0; $('#msgs').innerHTML=''; addMsg('ai','Hi, I am Iris. Ask me about hourly prices, your bill, EV charging or a smart home bundle.'); renderSuggest(['When is electricity cheapest tomorrow?','Lower my advance payment','Is it cheaper to charge my EV at home?','Would solar and a battery pay off for me?']); }
+    $('#iris').classList.add('open'); iris.open = true; track('Iris Opened', { entry }); $('#irisInput').focus(); }
+  function closeIris(end){ $('#iris').classList.remove('open'); iris.open=false; if (end && iris.session) { track('[Agent] Session End', Object.assign(agentBase(), { '[Agent] Turn ID': iris.turn, '[Agent] Trace ID':'tr-'+crypto.randomUUID().slice(0,12), '[Agent] Output State': 'closed_by_user' })); iris.session=null; } }
+  function addMsg(role, text, extra){ const d=document.createElement('div'); d.className='msg '+role; d.textContent=text; if (extra) d.appendChild(extra); $('#msgs').appendChild(d); $('#msgs').scrollTop = 1e6; return d; }
+  function renderSuggest(list){ $('#suggest').innerHTML = list.map(s=>`<button class="chip">${s}</button>`).join(''); $$('#suggest .chip').forEach(b=> b.onclick = () => send(b.textContent)); }
+  async function send(text){
+    text = (text||$('#irisInput').value).trim(); if (!text) return; $('#irisInput').value='';
+    iris.turn++; const trace='tr-'+crypto.randomUUID().slice(0,12), umsg='m-'+crypto.randomUUID().slice(0,10), amsg='m-'+crypto.randomUUID().slice(0,10);
+    const common = Object.assign(agentBase(), { '[Agent] Turn ID': iris.turn, '[Agent] Trace ID': trace });
+    addMsg('user', text);
+    track('[Agent] User Message', Object.assign({}, common, { '[Agent] Message ID': umsg, '[Agent] Message Source':'user', '[Agent] Is Regeneration': /again|not what/i.test(text), '$llm_message': { text } }));
+    const hit = KB.find(k=>k.k.test(text)) || { tool:'search_help_center', ok:true, a:'I can help with hourly prices, consumption, your contract, EV charging and smart home bundles. Which one do you mean?', acts:[] };
+    const t0 = performance.now(); const tl = addMsg('tool', 'Iris is checking ' + hit.tool.replace(/_/g,' ') + '...'); await new Promise(r=>setTimeout(r, 700 + Math.random()*600));
+    track('[Agent] Tool Call', Object.assign({}, common, { '[Agent] Invocation ID':'inv-'+crypto.randomUUID().slice(0,10), '[Agent] Tool Name': hit.tool, '[Agent] Parent Message ID': umsg, '[Agent] Tool Success': hit.ok, '[Agent] Is Error': !hit.ok, '[Agent] Latency Ms': Math.round(performance.now()-t0), '[Agent] Tool Input': JSON.stringify({ relationship_number: state.user }), '[Agent] Tool Output': hit.ok ? 'ok' : 'TimeoutError: contract-service did not respond', ...(hit.ok ? {} : { '[Agent] Error Message':'contract-service timeout' }) }));
+    tl.remove(); await new Promise(r=>setTimeout(r, 400));
+    const acts = document.createElement('div'); acts.className='acts';
+    hit.acts.forEach(([label, ev, screen]) => { const b=document.createElement('button'); b.className='chip'; b.textContent=label; b.onclick = () => { track('Iris Suggested Action Clicked', { topic: hit.tool, action: ev }); closeIris(false); nav(screen, { entry:'iris' }); if (ev==='Price Alert Set') track(ev,{ threshold_eur_kwh:0.10, entry:'iris' }); if (ev==='Smart Charging Enabled') $('#smartChargeBtn').click(); if (ev==='Bundle Configurator Started') $('#bundleStart').click(); }; acts.appendChild(b); });
+    const rate = document.createElement('div'); rate.className='rate'; [['👍',1],['👎',0]].forEach(([l,v])=>{ const b=document.createElement('button'); b.textContent=l; b.setAttribute('aria-label', v?'Helpful':'Not helpful'); b.onclick = () => { track('[Agent] Score', Object.assign(agentBase(), { '[Agent] Turn ID': iris.turn, '[Agent] Trace ID': trace, '[Agent] Score Name':'user-feedback', '[Agent] Score Value': v, '[Agent] Target ID': amsg, '[Agent] Target Type':'message', '[Agent] Evaluation Source':'user' })); rate.innerHTML='<span class="muted">Thanks for your feedback</span>'; }; rate.appendChild(b); });
+    const wrap = document.createElement('div'); wrap.appendChild(acts); wrap.appendChild(rate);
+    addMsg('ai', hit.a, wrap);
+    const tin = 900 + Math.round(Math.random()*1500), tout = 60 + Math.round(Math.random()*200);
+    track('[Agent] AI Response', Object.assign({}, common, { '[Agent] Message ID': amsg, '[Agent] Model Name':'gpt-4o-mini', '[Agent] Provider':'openai', '[Agent] Input Tokens': tin, '[Agent] Output Tokens': tout, '[Agent] Total Tokens': tin+tout, '[Agent] Cost USD': +((tin*0.15+tout*0.6)/1e6).toFixed(6), '[Agent] Latency Ms': Math.round(performance.now()-t0), '[Agent] Is Streaming': true, '[Agent] Finish Reason':'stop', '[Agent] Is Error': false, '[Agent] System Prompt':'You are Iris, the ANWB Energie assistant. Use tools for account data, never guess prices.', '$llm_message': { text: hit.a } }));
+    renderSuggest(['Thanks, and the other option?','That is not what I asked','What does that mean for my bill?']);
+  }
+  $('#irisFab').onclick = () => openIris('home_fab'); $('#irisClose').onclick = () => closeIris(true); $('#irisSend').onclick = () => send(); $('#irisInput').addEventListener('keydown', e=>{ if (e.key==='Enter') send(); });
+
+  // ---------------- demo panel ----------------
+  $('#demoBtn').onclick = () => $('#panel').classList.add('open'); $('#panelClose').onclick = () => { $('#panel').classList.remove('open'); applyPanel(); };
+  function applyPanel(){ state.linked=$('#tLinked').checked; state.hasEv=$('#tEv').checked; state.hasSolar=$('#tSolar').checked; state.products=$('#tProducts').value.split(','); state.variants.advancePayment=$('#tAdv').value; state.variants.smartCharging=$('#tSmart').value; state.exposed={}; if (state.user) identifyUser(); if ($('#s-home').classList.contains('active')) renderHome(); }
+  $('#resetBtn').onclick = () => { amp.reset(); state.user=null; iris.session=null; $('#panel').classList.remove('open'); nav('login'); toast('User reset: new anonymous device id'); };
+
+  // ---------------- boot ----------------
+  track('App Opened', { launch_source: webDeviceId ? 'qr_code' : 'icon' });
+  nav('login');
+})();
+</script>
+</body>
+</html>
